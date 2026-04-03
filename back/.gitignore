@@ -1,0 +1,16 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+
+## Visual Studio
+.vs/
+*.vsidx
+
+## Secrets / local config
+appsettings.Development.json
+
+## Logs
+logs/
+*.log
