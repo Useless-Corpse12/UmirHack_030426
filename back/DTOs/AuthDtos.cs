@@ -15,3 +15,8 @@ public record RegisterCustomerRequest(
     string DisplayName,
     string? ContactInfo
 );
+
+public record ChangePasswordRequest(
+    string OldPassword,
+    string NewPassword
+);

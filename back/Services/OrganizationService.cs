@@ -22,10 +22,38 @@ public class OrganizationService : IOrganizationService
         return org == null ? null : MapOrg(org);
     }
 
+    // Список организаций для покупателя — чтобы выбрать откуда заказывать
+    public async Task<List<OrganizationListItemResponse>> GetAllOrganizationsAsync()
+    {
+        var orgs = await _orgs.GetAllActiveAsync();
+        return orgs.Select(o => new OrganizationListItemResponse(
+            o.Id,
+            o.Name,
+            o.Restaurants.Count(r => r.IsActive)
+        )).ToList();
+    }
+
+    // Все активные рестораны (все орги)
     public async Task<List<RestaurantResponse>> GetAllRestaurantsAsync()
     {
         var restaurants = await _restaurants.GetAllActiveAsync();
         return restaurants.Select(MapRestaurant).ToList();
+    }
+
+    // Рестораны конкретной организации — покупатель выбрал оргу, смотрит её точки
+    public async Task<List<RestaurantResponse>> GetRestaurantsByOrgAsync(Guid orgId)
+    {
+        var org = await _orgs.GetByIdAsync(orgId)
+            ?? throw new KeyNotFoundException("Организация не найдена");
+
+        if (org.IsBlocked)
+            throw new InvalidOperationException("Организация заблокирована");
+
+        var restaurants = await _restaurants.GetByOrgIdAsync(orgId);
+        return restaurants
+            .Where(r => r.IsActive)
+            .Select(r => { r.Organization = org; return MapRestaurant(r); })
+            .ToList();
     }
 
     public async Task<RestaurantResponse> CreateRestaurantAsync(Guid ownerId, CreateRestaurantRequest request)
@@ -36,6 +64,9 @@ public class OrganizationService : IOrganizationService
         if (org.IsBlocked)
             throw new InvalidOperationException("Организация заблокирована");
 
+        // Без геолокации ресторан создаётся неактивным
+        var hasGeo = request.Lat.HasValue && request.Lng.HasValue;
+
         var restaurant = new Restaurant
         {
             Id = Guid.NewGuid(),
@@ -44,7 +75,8 @@ public class OrganizationService : IOrganizationService
             Address = request.Address,
             Lat = request.Lat,
             Lng = request.Lng,
-            DeliveryRadius = request.DeliveryRadius
+            DeliveryRadius = request.DeliveryRadius,
+            IsActive = hasGeo  // активен только если указана геолокация
         };
 
         await _restaurants.AddAsync(restaurant);
@@ -62,6 +94,10 @@ public class OrganizationService : IOrganizationService
 
         if (restaurant.OrgId != org.Id)
             throw new UnauthorizedAccessException("Нет доступа");
+
+        // Нельзя активировать ресторан без геолокации
+        if (request.IsActive && (!request.Lat.HasValue || !request.Lng.HasValue))
+            throw new InvalidOperationException("Укажите геолокацию чтобы активировать ресторан");
 
         restaurant.Name = request.Name;
         restaurant.Address = request.Address;

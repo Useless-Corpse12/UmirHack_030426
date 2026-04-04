@@ -36,3 +36,10 @@ public record RestaurantResponse(
     double? DeliveryRadius,
     bool IsActive
 );
+
+// Для покупателя — список организаций чтобы выбрать откуда заказывать
+public record OrganizationListItemResponse(
+    Guid Id,
+    string Name,
+    int RestaurantCount
+);

@@ -16,6 +16,33 @@ public class OrganizationsController : ControllerBase
 
     private Guid UserId => Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
 
+    // GET /api/organizations
+    // Список всех организаций для покупателя (публичный)
+    [HttpGet]
+    public async Task<IActionResult> GetAllOrganizations()
+    {
+        var result = await _service.GetAllOrganizationsAsync();
+        return Ok(result);
+    }
+
+    // GET /api/organizations/{orgId}/restaurants
+    // Рестораны конкретной организации — покупатель выбрал оргу, смотрит точки
+    [HttpGet("{orgId}/restaurants")]
+    public async Task<IActionResult> GetRestaurantsByOrg(Guid orgId)
+    {
+        var result = await _service.GetRestaurantsByOrgAsync(orgId);
+        return Ok(result);
+    }
+
+    // GET /api/organizations/restaurants
+    // Все рестораны всех организаций (публичный)
+    [HttpGet("restaurants")]
+    public async Task<IActionResult> GetAllRestaurants()
+    {
+        var result = await _service.GetAllRestaurantsAsync();
+        return Ok(result);
+    }
+
     // GET /api/organizations/my
     // Владелец смотрит свою организацию с ресторанами
     [Authorize(Roles = "OrganizationOwner")]
@@ -27,16 +54,8 @@ public class OrganizationsController : ControllerBase
         return Ok(result);
     }
 
-    // GET /api/organizations/restaurants
-    // Список всех ресторанов для покупателей (публичный)
-    [HttpGet("restaurants")]
-    public async Task<IActionResult> GetAllRestaurants()
-    {
-        var result = await _service.GetAllRestaurantsAsync();
-        return Ok(result);
-    }
-
     // POST /api/organizations/restaurants
+    // Без геолокации (Lat/Lng) ресторан создаётся с IsActive = false автоматически
     [Authorize(Roles = "OrganizationOwner")]
     [HttpPost("restaurants")]
     public async Task<IActionResult> CreateRestaurant([FromBody] CreateRestaurantRequest request)
@@ -46,6 +65,7 @@ public class OrganizationsController : ControllerBase
     }
 
     // PUT /api/organizations/restaurants/{id}
+    // Нельзя поставить IsActive = true без Lat/Lng — вернёт 400
     [Authorize(Roles = "OrganizationOwner")]
     [HttpPut("restaurants/{id}")]
     public async Task<IActionResult> UpdateRestaurant(Guid id, [FromBody] UpdateRestaurantRequest request)

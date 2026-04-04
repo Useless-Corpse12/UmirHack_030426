@@ -1,5 +1,7 @@
+using System.Security.Claims;
 using DeliveryAggregator.DTOs;
 using DeliveryAggregator.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DeliveryAggregator.Controllers;
@@ -11,6 +13,8 @@ public class AuthController : ControllerBase
     private readonly IAuthService _auth;
 
     public AuthController(IAuthService auth) => _auth = auth;
+
+    private Guid UserId => Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
 
     // POST /api/auth/login
     [HttpPost("login")]
@@ -28,5 +32,15 @@ public class AuthController : ControllerBase
     {
         var result = await _auth.RegisterCustomerAsync(request);
         return Ok(result);
+    }
+
+    // POST /api/auth/change-password
+    // Принимает токен + старый пароль + новый пароль, если токен валиден и старый пароль верный — меняет
+    [Authorize]
+    [HttpPost("change-password")]
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
+    {
+        await _auth.ChangePasswordAsync(UserId, request);
+        return Ok(new { message = "Пароль успешно изменён" });
     }
 }

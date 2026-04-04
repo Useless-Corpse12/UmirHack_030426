@@ -58,6 +58,21 @@ public class AuthService : IAuthService
         return new LoginResponse(token, user.Role.ToString(), user.Id, user.DisplayName);
     }
 
+    public async Task ChangePasswordAsync(Guid userId, ChangePasswordRequest request)
+    {
+        var user = await _users.GetByIdAsync(userId)
+            ?? throw new KeyNotFoundException("Пользователь не найден");
+
+        if (!BCrypt.Net.BCrypt.Verify(request.OldPassword, user.PasswordHash))
+            throw new UnauthorizedAccessException("Старый пароль неверный");
+
+        if (string.IsNullOrWhiteSpace(request.NewPassword) || request.NewPassword.Length < 6)
+            throw new InvalidOperationException("Новый пароль должен быть не менее 6 символов");
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+        await _users.UpdateAsync(user);
+    }
+
     private string GenerateToken(User user)
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]!));

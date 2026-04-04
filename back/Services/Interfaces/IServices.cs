@@ -7,6 +7,7 @@ public interface IAuthService
 {
     Task<LoginResponse> LoginAsync(LoginRequest request);
     Task<LoginResponse> RegisterCustomerAsync(RegisterCustomerRequest request);
+    Task ChangePasswordAsync(Guid userId, ChangePasswordRequest request);
 }
 
 public interface IApplicationService
@@ -18,7 +19,9 @@ public interface IApplicationService
 public interface IOrganizationService
 {
     Task<OrganizationResponse?> GetMyOrganizationAsync(Guid ownerId);
-    Task<List<RestaurantResponse>> GetAllRestaurantsAsync(); // для покупателя
+    Task<List<OrganizationListItemResponse>> GetAllOrganizationsAsync(); // список орг для покупателя
+    Task<List<RestaurantResponse>> GetAllRestaurantsAsync(); // все рестораны
+    Task<List<RestaurantResponse>> GetRestaurantsByOrgAsync(Guid orgId); // рестораны конкретной орги
     Task<RestaurantResponse> CreateRestaurantAsync(Guid ownerId, CreateRestaurantRequest request);
     Task<RestaurantResponse> UpdateRestaurantAsync(Guid ownerId, Guid restaurantId, UpdateRestaurantRequest request);
     Task DeleteRestaurantAsync(Guid ownerId, Guid restaurantId);
