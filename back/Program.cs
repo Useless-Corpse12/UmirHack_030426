@@ -22,7 +22,6 @@ builder.Services.AddCors(options =>
     options.AddDefaultPolicy(policy =>
     {
         policy
-            .WithOrigins("http://localhost:3000", "http://localhost:5173")
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials();
@@ -118,12 +117,14 @@ if (dbAvailable)
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.Migrate();
-}
+};
 
-app.UseMiddleware<ExceptionMiddleware>();
-app.UseCors("AllowAll");
+app.UseCors();
+
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.UseMiddleware<ExceptionMiddleware>();
 
 app.MapControllers();
 app.MapHub<OrderHub>("/hubs/orders");
