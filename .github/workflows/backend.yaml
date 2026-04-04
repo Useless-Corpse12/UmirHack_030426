@@ -28,8 +28,4 @@ jobs:
 
       - name: Notify
         run: |
-          curl
-            -x http://${{ secrets.PROXY_NAME }}:${{ secrets.PROXY_PASSWORD }}@proxy.labofdev.ru:8888
-            -X POST "https://api.telegram.org/bot${{ secrets.BOT_ID }}/sendMessage"
-            -d chat_id=${{ secrets.CHAT_ID }}
-            -d text="Обновы бэка залиты. Надо обновить стэк!"
+          curl -x http://${{ secrets.PROXY_NAME }}:${{ secrets.PROXY_PASSWORD }}@proxy.labofdev.ru:8888 -X POST "https://api.telegram.org/bot${{ secrets.BOT_ID }}/sendMessage" -d chat_id=${{ secrets.CHAT_ID }} -d text="Обновы бэка залиты. Надо обновить стэк!"
