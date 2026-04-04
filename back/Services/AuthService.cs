@@ -42,7 +42,7 @@ public class AuthService : IAuthService
         if (existing != null)
             throw new InvalidOperationException("Email уже используется");
 
-        var user = new User
+        var user = new User 
         {
             Id = Guid.NewGuid(),
             Email = request.Email,
