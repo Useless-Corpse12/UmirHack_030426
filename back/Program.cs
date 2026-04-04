@@ -121,7 +121,7 @@ if (dbAvailable)
 }
 
 app.UseMiddleware<ExceptionMiddleware>();
-app.UseCors();
+app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseAuthorization();
 
