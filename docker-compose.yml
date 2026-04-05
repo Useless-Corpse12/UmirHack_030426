@@ -1,0 +1,6 @@
+services:
+  frontend:
+    image: xoriax/umir-frontend:latest
+    build:
+      context: ./front
+      dockerfile: ./Dockerfile

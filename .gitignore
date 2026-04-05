@@ -31,7 +31,6 @@ front/.env.*.local
 front/npm-debug.log*
 front/yarn-debug.log*
 front/yarn-error.log*
-front/package-lock.json   
 front/pnpm-lock.yaml
 front/.eslintcache
 front/*.tsbuildinfo
