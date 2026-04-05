@@ -163,6 +163,37 @@ public class MockCourierRepository : ICourierRepository
     }
 }
 
+public class MockEmailConfirmationTokenRepository : IEmailConfirmationTokenRepository
+{
+    private readonly List<EmailConfirmationToken> _tokens = new();
+
+    public Task<EmailConfirmationToken?> GetByTokenAsync(string token) =>
+        Task.FromResult(_tokens.FirstOrDefault(t => t.Token == token));
+
+    public Task<EmailConfirmationToken?> GetActiveByUserIdAsync(Guid userId) =>
+        Task.FromResult(_tokens.FirstOrDefault(t =>
+            t.UserId == userId && !t.IsUsed && t.ExpiresAt > DateTime.UtcNow));
+
+    public Task AddAsync(EmailConfirmationToken token)
+    {
+        _tokens.Add(token);
+        return Task.CompletedTask;
+    }
+
+    public Task UpdateAsync(EmailConfirmationToken token)
+    {
+        var i = _tokens.FindIndex(t => t.Id == token.Id);
+        if (i >= 0) _tokens[i] = token;
+        return Task.CompletedTask;
+    }
+
+    public Task DeleteExpiredAsync()
+    {
+        _tokens.RemoveAll(t => t.ExpiresAt < DateTime.UtcNow);
+        return Task.CompletedTask;
+    }
+}
+
 public class MockOrderRepository : IOrderRepository
 {
     public Task<Order?> GetByIdAsync(Guid id) =>

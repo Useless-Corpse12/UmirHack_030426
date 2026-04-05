@@ -6,7 +6,8 @@ public record LoginResponse(
     string Token,
     string Role,
     Guid UserId,
-    string DisplayName
+    string DisplayName,
+    bool IsEmailConfirmed  // фронт показывает предупреждение если false
 );
 
 public record RegisterCustomerRequest(
@@ -20,3 +21,5 @@ public record ChangePasswordRequest(
     string OldPassword,
     string NewPassword
 );
+
+public record ResendConfirmationRequest(string Email);

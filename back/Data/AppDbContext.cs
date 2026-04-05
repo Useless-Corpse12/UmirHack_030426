@@ -16,6 +16,7 @@ public class AppDbContext : DbContext
     public DbSet<Courier> Couriers => Set<Courier>();
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
+    public DbSet<EmailConfirmationToken> EmailConfirmationTokens => Set<EmailConfirmationToken>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -24,6 +25,13 @@ public class AppDbContext : DbContext
             e.HasKey(x => x.Id);
             e.HasIndex(x => x.Email).IsUnique();
             e.Property(x => x.Role).HasConversion<string>();
+            // Strikes как jsonb в PostgreSQL
+            e.Property(x => x.Strikes)
+             .HasColumnType("jsonb")
+             .HasConversion(
+                v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
+                v => System.Text.Json.JsonSerializer.Deserialize<List<string>>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? new List<string>()
+             );
         });
 
         modelBuilder.Entity<RegistrationApplication>(e =>
@@ -48,6 +56,13 @@ public class AppDbContext : DbContext
              .WithOne(x => x.Organization)
              .HasForeignKey(x => x.OrgId)
              .OnDelete(DeleteBehavior.Cascade);
+            // Strikes как jsonb
+            e.Property(x => x.Strikes)
+             .HasColumnType("jsonb")
+             .HasConversion(
+                v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
+                v => System.Text.Json.JsonSerializer.Deserialize<List<string>>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? new List<string>()
+             );
         });
 
         modelBuilder.Entity<Courier>(e =>
@@ -61,6 +76,13 @@ public class AppDbContext : DbContext
              .WithMany()
              .HasForeignKey(x => x.CurrentOrderId)
              .OnDelete(DeleteBehavior.SetNull);
+            // Strikes как jsonb
+            e.Property(x => x.Strikes)
+             .HasColumnType("jsonb")
+             .HasConversion(
+                v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
+                v => System.Text.Json.JsonSerializer.Deserialize<List<string>>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? new List<string>()
+             );
         });
 
         modelBuilder.Entity<Order>(e =>
@@ -98,10 +120,22 @@ public class AppDbContext : DbContext
              .OnDelete(DeleteBehavior.Restrict);
         });
 
+        modelBuilder.Entity<EmailConfirmationToken>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => x.Token).IsUnique();
+            e.HasOne(x => x.User)
+             .WithMany(x => x.EmailTokens)
+             .HasForeignKey(x => x.UserId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Индексы
         modelBuilder.Entity<Order>().HasIndex(x => x.Status);
         modelBuilder.Entity<Order>().HasIndex(x => x.CourierId);
         modelBuilder.Entity<Order>().HasIndex(x => x.CustomerId);
         modelBuilder.Entity<Courier>().HasIndex(x => x.IsOnShift);
         modelBuilder.Entity<MenuItem>().HasIndex(x => x.OrgId);
+        modelBuilder.Entity<User>().HasIndex(x => x.IsDeleted);
     }
 }

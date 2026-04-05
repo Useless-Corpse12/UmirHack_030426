@@ -6,6 +6,7 @@ public class Organization
     public Guid OwnerId { get; set; }
     public string Name { get; set; } = null!;
     public bool IsBlocked { get; set; } = false;
+    public List<string> Strikes { get; set; } = new(); // причины страйков, jsonb
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     // Navigation

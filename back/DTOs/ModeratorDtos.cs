@@ -2,7 +2,6 @@ using DeliveryAggregator.Enums;
 
 namespace DeliveryAggregator.DTOs;
 
-// Модератор создаёт пользователя вручную при одобрении заявки
 public record CreateUserRequest(
     Guid ApplicationId,
     string Email,
@@ -10,7 +9,7 @@ public record CreateUserRequest(
     string DisplayName,
     string? ContactInfo,
     UserRole Role,
-    string? WorkZone  // только для курьера
+    string? WorkZone
 );
 
 public record ReviewApplicationRequest(
@@ -25,6 +24,7 @@ public record ModeratorUserResponse(
     string? ContactInfo,
     string Role,
     bool IsActive,
+    bool IsDeleted,
     DateTime CreatedAt
 );
 
@@ -36,6 +36,7 @@ public record ModeratorCourierResponse(
     string? WorkZone,
     bool IsOnShift,
     bool IsBlocked,
+    List<string> Strikes,
     Guid? CurrentOrderId
 );
 
@@ -45,8 +46,15 @@ public record ModeratorOrgResponse(
     string OwnerEmail,
     string OwnerName,
     bool IsBlocked,
+    List<string> Strikes,
     int RestaurantCount,
     DateTime CreatedAt
 );
 
 public record BlockRequest(bool IsBlocked);
+
+// Добавить страйк курьеру или организации
+public record AddStrikeRequest(string Reason);
+
+// Уволить/удалить курьера (soft delete)
+public record FireCourierRequest(string Reason);

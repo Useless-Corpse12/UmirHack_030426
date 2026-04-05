@@ -7,6 +7,7 @@ public class Courier
     public string? WorkZone { get; set; }
     public bool IsOnShift { get; set; } = false;
     public bool IsBlocked { get; set; } = false;
+    public List<string> Strikes { get; set; } = new(); // причины страйков, jsonb
     public Guid? CurrentOrderId { get; set; }
 
     // Navigation

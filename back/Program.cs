@@ -19,13 +19,14 @@ builder.Services.AddSignalR();
 
 builder.Services.AddCors(options =>
 {
-    options.AddDefaultPolicy(policy =>
+    options.AddPolicy("AllowAll", policy =>
     {
         policy
-            .AllowAnyOrigin()
+            .WithOrigins("http://localhost:3000", "http://localhost:5173")
             .AllowAnyHeader()
-            .AllowAnyMethod();
-        });
+            .AllowAnyMethod()
+            .AllowCredentials();
+    });
 });
 
 var jwtKey = builder.Configuration["Jwt:Key"]!;
@@ -58,6 +59,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization();
 
 // Сервисы (одинаковые независимо от БД)
+builder.Services.AddSingleton<IEncryptionService, EncryptionService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IApplicationService, ApplicationService>();
 builder.Services.AddScoped<IOrganizationService, OrganizationService>();
@@ -66,7 +69,7 @@ builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<ICourierService, CourierService>();
 builder.Services.AddScoped<IModeratorService, ModeratorService>();
 
-// Проверяем БД и регистрируем реальные или mock репозитории
+// Проверяем БД
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")!;
 var dbAvailable = CheckDatabaseAvailable(connectionString);
 
@@ -86,6 +89,7 @@ if (dbAvailable)
     builder.Services.AddScoped<IMenuRepository, MenuRepository>();
     builder.Services.AddScoped<ICourierRepository, CourierRepository>();
     builder.Services.AddScoped<IOrderRepository, OrderRepository>();
+    builder.Services.AddScoped<IEmailConfirmationTokenRepository, EmailConfirmationTokenRepository>();
 }
 else
 {
@@ -100,7 +104,6 @@ else
     Console.WriteLine("  customer@test.com   / Customer123 (Покупатель)");
     Console.ResetColor();
 
-    // Singleton — данные живут пока работает приложение
     builder.Services.AddSingleton<IUserRepository, MockUserRepository>();
     builder.Services.AddSingleton<IApplicationRepository, MockApplicationRepository>();
     builder.Services.AddSingleton<IOrganizationRepository, MockOrganizationRepository>();
@@ -108,6 +111,7 @@ else
     builder.Services.AddSingleton<IMenuRepository, MockMenuRepository>();
     builder.Services.AddSingleton<ICourierRepository, MockCourierRepository>();
     builder.Services.AddSingleton<IOrderRepository, MockOrderRepository>();
+    builder.Services.AddSingleton<IEmailConfirmationTokenRepository, MockEmailConfirmationTokenRepository>();
 }
 
 var app = builder.Build();
@@ -117,14 +121,12 @@ if (dbAvailable)
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.Migrate();
-};
-
-app.UseCors();
-
-app.UseAuthentication();
-app.UseAuthorization();
+}
 
 app.UseMiddleware<ExceptionMiddleware>();
+app.UseCors("AllowAll");
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapControllers();
 app.MapHub<OrderHub>("/hubs/orders");

@@ -58,6 +58,15 @@ public interface ICourierRepository
     Task UpdateAsync(Courier courier);
 }
 
+public interface IEmailConfirmationTokenRepository
+{
+    Task<EmailConfirmationToken?> GetByTokenAsync(string token);
+    Task<EmailConfirmationToken?> GetActiveByUserIdAsync(Guid userId);
+    Task AddAsync(EmailConfirmationToken token);
+    Task UpdateAsync(EmailConfirmationToken token);
+    Task DeleteExpiredAsync();
+}
+
 public interface IOrderRepository
 {
     Task<Order?> GetByIdAsync(Guid id);

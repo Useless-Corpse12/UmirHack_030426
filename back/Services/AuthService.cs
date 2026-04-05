@@ -13,11 +13,22 @@ namespace DeliveryAggregator.Services;
 public class AuthService : IAuthService
 {
     private readonly IUserRepository _users;
+    private readonly IEmailConfirmationTokenRepository _emailTokens;
+    private readonly IEmailService _emailService;
+    private readonly IEncryptionService _encryption;
     private readonly IConfiguration _config;
 
-    public AuthService(IUserRepository users, IConfiguration config)
+    public AuthService(
+        IUserRepository users,
+        IEmailConfirmationTokenRepository emailTokens,
+        IEmailService emailService,
+        IEncryptionService encryption,
+        IConfiguration config)
     {
         _users = users;
+        _emailTokens = emailTokens;
+        _emailService = emailService;
+        _encryption = encryption;
         _config = config;
     }
 
@@ -26,6 +37,10 @@ public class AuthService : IAuthService
         var user = await _users.GetByEmailAsync(request.Email)
             ?? throw new UnauthorizedAccessException("Неверный email или пароль");
 
+        // Проверка soft delete — уволенный/удалённый пользователь
+        if (user.IsDeleted)
+            throw new UnauthorizedAccessException("Аккаунт удалён");
+
         if (!user.IsActive)
             throw new UnauthorizedAccessException("Аккаунт заблокирован");
 
@@ -33,29 +48,81 @@ public class AuthService : IAuthService
             throw new UnauthorizedAccessException("Неверный email или пароль");
 
         var token = GenerateToken(user);
-        return new LoginResponse(token, user.Role.ToString(), user.Id, user.DisplayName);
+        return new LoginResponse(token, user.Role.ToString(), user.Id, user.DisplayName, user.IsEmailConfirmed);
     }
 
     public async Task<LoginResponse> RegisterCustomerAsync(RegisterCustomerRequest request)
     {
+        // Проверяем blacklist — даже удалённые пользователи
         var existing = await _users.GetByEmailAsync(request.Email);
         if (existing != null)
+        {
+            if (existing.IsDeleted)
+                throw new InvalidOperationException("Этот email заблокирован");
             throw new InvalidOperationException("Email уже используется");
+        }
 
-        var user = new User 
+        var user = new User
         {
             Id = Guid.NewGuid(),
             Email = request.Email,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
             DisplayName = request.DisplayName,
-            ContactInfo = request.ContactInfo,
-            Role = UserRole.Customer
+            // Шифруем ContactInfo (телефон)
+            ContactInfo = string.IsNullOrEmpty(request.ContactInfo)
+                ? null
+                : _encryption.Encrypt(request.ContactInfo),
+            Role = UserRole.Customer,
+            IsEmailConfirmed = false
         };
 
         await _users.AddAsync(user);
 
+        // Отправляем письмо подтверждения
+        var confirmToken = await CreateConfirmationTokenAsync(user.Id);
+        await _emailService.SendConfirmationEmailAsync(user.Email, user.DisplayName, confirmToken);
+
         var token = GenerateToken(user);
-        return new LoginResponse(token, user.Role.ToString(), user.Id, user.DisplayName);
+        return new LoginResponse(token, user.Role.ToString(), user.Id, user.DisplayName, false);
+    }
+
+    public async Task<bool> ConfirmEmailAsync(string token)
+    {
+        var record = await _emailTokens.GetByTokenAsync(token);
+
+        if (record == null || record.IsUsed || record.ExpiresAt < DateTime.UtcNow)
+            return false;
+
+        var user = await _users.GetByIdAsync(record.UserId);
+        if (user == null) return false;
+
+        user.IsEmailConfirmed = true;
+        await _users.UpdateAsync(user);
+
+        record.IsUsed = true;
+        await _emailTokens.UpdateAsync(record);
+
+        return true;
+    }
+
+    public async Task ResendConfirmationAsync(string email)
+    {
+        var user = await _users.GetByEmailAsync(email)
+            ?? throw new KeyNotFoundException("Пользователь не найден");
+
+        if (user.IsEmailConfirmed)
+            throw new InvalidOperationException("Email уже подтверждён");
+
+        // Инвалидируем старый токен если есть
+        var oldToken = await _emailTokens.GetActiveByUserIdAsync(user.Id);
+        if (oldToken != null)
+        {
+            oldToken.IsUsed = true;
+            await _emailTokens.UpdateAsync(oldToken);
+        }
+
+        var confirmToken = await CreateConfirmationTokenAsync(user.Id);
+        await _emailService.SendConfirmationEmailAsync(user.Email, user.DisplayName, confirmToken);
     }
 
     public async Task ChangePasswordAsync(Guid userId, ChangePasswordRequest request)
@@ -71,6 +138,23 @@ public class AuthService : IAuthService
 
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
         await _users.UpdateAsync(user);
+    }
+
+    private async Task<string> CreateConfirmationTokenAsync(Guid userId)
+    {
+        var token = Convert.ToBase64String(Guid.NewGuid().ToByteArray())
+            .Replace("/", "_").Replace("+", "-").Replace("=", "");
+
+        var record = new EmailConfirmationToken
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Token = token,
+            ExpiresAt = DateTime.UtcNow.AddHours(24)
+        };
+
+        await _emailTokens.AddAsync(record);
+        return token;
     }
 
     private string GenerateToken(User user)
