@@ -123,10 +123,12 @@ if (dbAvailable)
     db.Database.Migrate();
 }
 
-app.UseMiddleware<ExceptionMiddleware>();
-app.UseCors("AllowAll");
+app.UseCors();
+
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.UseMiddleware<ExceptionMiddleware>();
 
 app.MapControllers();
 app.MapHub<OrderHub>("/hubs/orders");
