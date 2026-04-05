@@ -1,6 +1,0 @@
-<Link>
-<img src={Logo} alt="logo" />
-</Link>
-
-
-import Logo from '../assets/logo.svg';
