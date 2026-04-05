@@ -1,0 +1,31 @@
+name: Production backend CI CD
+
+on:
+  push:
+    branches:
+      - main
+      - back
+
+jobs:
+  backend-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@f4ef78c080cd8ba55a85445d5b36e214a81df20a
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Preparing backend image
+        working-directory: ./
+        run: docker compose -f ./docker-compose.yml build backend
+
+      - name: Push image
+        working-directory: ./
+        run: docker compose -f ./docker-compose.yml push backend
+
+      - name: Notify
+        run: |
+          curl -x http://${{ secrets.PROXY_NAME }}:${{ secrets.PROXY_PASSWORD }}@proxy.labofdev.ru:8888 -X POST "https://api.telegram.org/bot${{ secrets.BOT_ID }}/sendMessage" -d chat_id=${{ secrets.CHAT_ID }} -d text="Обновы бэка залиты. Надо обновить стэк!"

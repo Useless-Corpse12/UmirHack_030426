@@ -1,4 +1,9 @@
 services:
+  backend:
+    image: xoriax/umir-backend:latest
+    build:
+      context: ./back
+      dockerfile: ./Dockerfile
   frontend:
     image: xoriax/umir-frontend:latest
     build:
